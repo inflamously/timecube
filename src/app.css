@@ -1,0 +1,8 @@
+body {
+  margin: unset;
+}
+
+#app {
+  width: 100%;
+  height: 100%;
+}
