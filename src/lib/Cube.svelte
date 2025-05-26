@@ -6,33 +6,161 @@
     import yellowSide from '../assets/yellow.png'
     import greenSide from '../assets/green.png'
 
-    function startCubeRotation() {
-        console.log("Cube rot!");
+    type CubeSides = 'front' | 'back' | 'left' | 'right' | 'top' | 'bottom'
+
+    type Vector2D = {
+        x: number;
+        y: number;
     }
 
-    function adjustCubeRotation() {
+    let drag = $state(false);
+    let startPosition: Vector2D = $state({x: 0, y: 0});
+    let side: CubeSides = $state('front');
+    let transformPosition: string = $state(getCubeRotationSideStyle(() => side))
 
+    $effect(() => {
+        transformPosition = getCubeRotationSideStyle(() => side);
+    })
+
+    function calcNextDirection(currentDirection: () => CubeSides, swipeDirections: Vector2D): CubeSides {
+        console.log(currentDirection, swipeDirections);
+        switch (currentDirection()) {
+            case "front":
+                // Bottom
+                if (swipeDirections.y < 0) {
+                    return 'top'
+                }
+                // Top
+                if (swipeDirections.y > 0) {
+                    return 'bottom'
+                }
+                break;
+            case "top":
+                // Bottom
+                if (swipeDirections.y < 0) {
+                    return 'back'
+                }
+                // Top
+                if (swipeDirections.y > 0) {
+                    return 'front'
+                }
+        }
+
+        return currentDirection()
+    }
+
+    function startCubeRotation(ev: MouseEvent) {
+        drag = true;
+        startPosition = {
+            x: ev.clientX, y: ev.clientY
+        }
+    }
+
+    function adjustCubeRotation(ev: MouseEvent) {
+        if (!drag) {
+            return;
+        }
+    }
+
+    function stopCubeRotation(ev: MouseEvent) {
+        drag = false;
+
+        const actualPosition: Vector2D = {
+            x: ev.clientX,
+            y: ev.clientY
+        }
+
+        const deltaOffset = 50;
+        const deltaPosition: Vector2D = {
+            x: actualPosition.x - startPosition.x,
+            y: actualPosition.y - startPosition.y
+        }
+
+        let swipeDirectionX = 0;
+        if (Math.abs(deltaPosition.x) > deltaOffset) {
+            swipeDirectionX = Math.sign(deltaPosition.x)
+        }
+        let swipeDirectionY = 0;
+        if (Math.abs(deltaPosition.y) > deltaOffset) {
+            swipeDirectionY = Math.sign(deltaPosition.y)
+        }
+
+        side = calcNextDirection(() => side, {
+            x: swipeDirectionX,
+            y: swipeDirectionY
+        })
+    }
+
+    function getCubeRotationSideStyle(side: () => CubeSides): string {
+        const perspective = 10000;
+        const result = `perspective(${perspective}px)`
+
+        switch (side()) {
+            case "front":
+                return ''
+            case "back":
+                return `${result} rotateX(180deg) rotateZ(180deg) scaleX(-1)`
+            case 'left':
+                return `${result} rotateY(-90deg) scaleX(-1)`;
+            case 'right':
+                return `${result} rotateY(-90deg)`;
+            case 'top':
+                return `${result} rotateX(90deg)`
+            case 'bottom':
+                return `${result} rotateX(-90deg)`
+            default:
+                return ''
+        }
     }
 </script>
 
 <div>
-    <div class="container">
-        <button class="face front" on:mousedown={startCubeRotation} on:mousemove={adjustCubeRotation} tabindex="-1">
+    <div class="container" style:--transform={transformPosition}>
+        <button class="face front"
+                onmousedown={startCubeRotation}
+                onmousemove={adjustCubeRotation}
+                onmouseup={stopCubeRotation}
+                onmouseleave={stopCubeRotation}
+                tabindex="-1">
             <img src={blackSide} alt=""/>
         </button>
-        <button class="face right" on:mousedown={startCubeRotation} on:mousemove={adjustCubeRotation} tabindex="-2">
+        <button class="face right"
+                onmousedown={startCubeRotation}
+                onmousemove={adjustCubeRotation}
+                onmouseup={stopCubeRotation}
+                onmouseleave={stopCubeRotation}
+                tabindex="-2">
             <img src={redSide} alt=""/>
         </button>
-        <button class="face left" on:mousedown={startCubeRotation} on:mousemove={adjustCubeRotation} tabindex="-3">
+        <button class="face left"
+                onmousedown={startCubeRotation}
+                onmousemove={adjustCubeRotation}
+                onmouseup={stopCubeRotation}
+                onmouseleave={stopCubeRotation}
+                tabindex="-3">
             <img src={blueSide} alt=""/>
         </button>
-        <button class="face back" on:mousedown={startCubeRotation} on:mousemove={adjustCubeRotation} tabindex="-4">
+        <button class="face back"
+                onmousedown={startCubeRotation}
+                onmousemove={adjustCubeRotation}
+                onmouseup={stopCubeRotation}
+                onmouseleave={stopCubeRotation}
+                tabindex="-4">
             <img src={whiteSide} alt=""/>
         </button>
-        <button class="face top" on:mousedown={startCubeRotation} on:mousemove={adjustCubeRotation} tabindex="-5">
+        <button class="face top"
+                onmousedown={startCubeRotation}
+                onmousemove={adjustCubeRotation}
+                onmouseup={stopCubeRotation}
+                onmouseleave={stopCubeRotation}
+                tabindex="-5">
             <img src={yellowSide} alt=""/>
         </button>
-        <button class="face bottom" on:mousedown={startCubeRotation} on:mousemove={adjustCubeRotation}
+        <button class="face bottom"
+                onmousedown={startCubeRotation}
+                onmousemove={adjustCubeRotation}
+                onmouseup={stopCubeRotation}
+                onmouseleave={stopCubeRotation}
                 tabindex="-6">
             <img src={greenSide} alt=""/>
         </button>
@@ -48,12 +176,12 @@
         display: flex;
         justify-content: center;
         align-items: center;
-        perspective: 10000px;
         transform-style: preserve-3d;
         width: var(--size);
         height: var(--size);
         transform-origin: 50% 50%;
-        animation: rotate 60s infinite linear;
+        transform: var(--transform);
+        transition: transform 1s cubic-bezier(0.22, 1, 0.36, 1);
     }
 
     .face {
@@ -84,7 +212,7 @@
     }
 
     .face.top {
-        transform: rotateX(-90deg) translateZ(calc(-1 * var(--size) / 2));
+        transform: rotateX(-90deg) rotateZ(180deg) scaleX(-1) translateZ(calc(-1 * var(--size) / 2));
     }
 
     .face.bottom {
