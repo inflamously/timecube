@@ -5,7 +5,7 @@
     import whiteSide from '../assets/white.png'
     import yellowSide from '../assets/yellow.png'
     import greenSide from '../assets/green.png'
-    import {glMatrix, mat4, quat} from 'gl-matrix'
+    import {glMatrix, mat4, quat, vec3} from 'gl-matrix'
 
     type CubeSides = 'front' | 'back' | 'left' | 'right' | 'top' | 'bottom'
 
@@ -17,15 +17,18 @@
     let drag = $state(false);
     let startPosition: Vector2D = $state({x: 0, y: 0});
     let side: CubeSides = $state('front');
+    let pitch = $state(0);
+    let yaw = $state(0);
     let rotationMatrix = $state(mat4.create())
     let rotationQuat = $state(quat.create());
-    let transformPosition: string = $state(getCubeRotationSideStyle(() => rotationMatrix))
+    let transformPosition: string = $state(applyRotation(() => rotationMatrix))
 
     $effect(() => {
-        transformPosition = getCubeRotationSideStyle(() => rotationMatrix);
+        transformPosition = applyRotation(() => rotationMatrix);
     })
 
     function startCubeRotationProcess(ev: MouseEvent) {
+        console.log("drag start");
         drag = true;
         startPosition = {
             x: ev.clientX, y: ev.clientY
@@ -33,6 +36,7 @@
     }
 
     function applyCubeRotationProcess(ev: MouseEvent) {
+        console.log("drag finished");
         if (!drag) {
             return;
         }
@@ -59,28 +63,52 @@
             swipeDirectionY = Math.sign(deltaPosition.y)
         }
 
-        if (swipeDirectionY > 0) {
-            rotationQuat = quat.rotateX(quat.create(), rotationQuat, glMatrix.toRadian(90))
-        }
-        if (swipeDirectionY < 0) {
-            rotationQuat = quat.rotateX(quat.create(), rotationQuat, glMatrix.toRadian(-90))
-        }
+        // rotationQuat = quat.mul(quat.create(), rotationQuat, quat.fromEuler(quat.create(), 0, glMatrix.toRadian(90), 0))
 
         if (swipeDirectionX > 0) {
-            rotationQuat = quat.rotateY(quat.create(), rotationQuat, glMatrix.toRadian(-90))
+            pitch = glMatrix.toRadian(90);
+            // rotationQuat = quat.rotateY(quat.create(), rotationQuat, glMatrix.toRadian(90))
+            // rotationQuat = quat.mul(quat.create(), rotationQuat, quat.fromEuler(quat.create(), 0, 90, 0))
         }
         if (swipeDirectionX < 0) {
-            rotationQuat = quat.rotateY(quat.create(), rotationQuat, glMatrix.toRadian(90))
+            pitch = glMatrix.toRadian(-90);
+
+            // rotationQuat = quat.rotateY(quat.create(), rotationQuat, glMatrix.toRadian(-90))
+            // rotationQuat = quat.mul(quat.create(), rotationQuat, quat.fromEuler(quat.create(), 0, -90, 0))
         }
 
+        if (swipeDirectionY > 0) {
+            yaw = glMatrix.toRadian(-90);
 
-        rotationMatrix = mat4.fromQuat(rotationMatrix, rotationQuat);
-        // console.log(quat.str(rotationQuat), rotationQuat * 180 / Math.PI, glMatrix.toRadian(90))
+            // rotationQuat = quat.rotateZ(quat.create(), rotationQuat, glMatrix.toRadian(90))
+            // rotationQuat = quat.mul(quat.create(), rotationQuat, quat.fromEuler(quat.create(), 90, 0, 0))
+        }
+
+        if (swipeDirectionY < 0) {
+            yaw = glMatrix.toRadian(90);
+            // rotationQuat = quat.rotateZ(quat.create(), rotationQuat, glMatrix.toRadian(-90))
+            // rotationQuat = quat.mul(quat.create(), rotationQuat, quat.fromEuler(quat.create(), -90, 0, 0))
+        }
+
+        let pitchQuat = quat.create()
+        if (Math.abs(pitch) > 0) {
+            pitchQuat = quat.setAxisAngle(pitchQuat, vec3.fromValues(0, 1, 0), pitch)
+            rotationQuat = quat.mul(rotationQuat, rotationQuat, pitchQuat)
+        }
+        let yawQuat = quat.create()
+        if (Math.abs(yaw) > 0) {
+            yawQuat = quat.setAxisAngle(quat.create(), vec3.fromValues(1, 0, 0), yaw)
+            rotationQuat = quat.mul(rotationQuat, rotationQuat, yawQuat)
+        }
+        rotationMatrix = mat4.fromQuat(mat4.create(), rotationQuat);
+        pitch = 0
+        yaw = 0;
     }
 
-    function getCubeRotationSideStyle(rotMatrix: () => mat4): string {
+    function applyRotation(rotMatrix: () => mat4): string {
         const perspective = 10000;
-        return `perspective(${perspective}px) matrix3d(${rotationMatrix.join(",")})`//rotateX(${rotationQuat[0]}rad) rotateY(${rotationQuat[1]}rad) rotateZ(${rotationQuat[2]}rad)`//matrix3d(1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1)`
+        console.log(rotMatrix());
+        return `perspective(${perspective}px) matrix3d(${rotMatrix().join(",")})`//rotateX(${rotationQuat[0]}rad) rotateY(${rotationQuat[1]}rad) rotateZ(${rotationQuat[2]}rad)`//matrix3d(1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1)`
     }
 </script>
 
