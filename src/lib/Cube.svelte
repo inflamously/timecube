@@ -5,6 +5,7 @@
     import whiteSide from '../assets/white.png'
     import yellowSide from '../assets/yellow.png'
     import greenSide from '../assets/green.png'
+    import {glMatrix, mat4, quat} from 'gl-matrix'
 
     type CubeSides = 'front' | 'back' | 'left' | 'right' | 'top' | 'bottom'
 
@@ -16,34 +17,74 @@
     let drag = $state(false);
     let startPosition: Vector2D = $state({x: 0, y: 0});
     let side: CubeSides = $state('front');
-    let transformPosition: string = $state(getCubeRotationSideStyle(() => side))
+    let relativeRotationX = $state(0)
+    let relativeRotationY = $state(0)
+    let rotationMatrix = $state(mat4.create())
+    let rotationQuat = $state(quat.create());
+    let transformPosition: string = $state(getCubeRotationSideStyle(() => side, () => relativeRotationX, () => relativeRotationY, () => rotationMatrix))
 
     $effect(() => {
-        transformPosition = getCubeRotationSideStyle(() => side);
+        transformPosition = getCubeRotationSideStyle(() => side, () => relativeRotationX, () => relativeRotationY, () => rotationMatrix);
+        console.log("new side", relativeRotationX, relativeRotationY);
     })
 
     function calcNextDirection(currentDirection: () => CubeSides, swipeDirections: Vector2D): CubeSides {
         console.log(currentDirection, swipeDirections);
         switch (currentDirection()) {
             case "front":
-                // Bottom
+                if (swipeDirections.y < 0) {
+                    return 'bottom'
+                }
+                if (swipeDirections.y > 0) {
+                    return 'top'
+                }
+                if (swipeDirections.x < 0) {
+                    return 'right'
+                }
+                if (swipeDirections.x > 0) {
+                    return 'left'
+                }
+                break;
+            case "top":
+                if (swipeDirections.y < 0) {
+                    return 'front'
+                }
+                if (swipeDirections.y > 0) {
+                    return 'back'
+                }
+                break
+            case "back":
                 if (swipeDirections.y < 0) {
                     return 'top'
                 }
-                // Top
                 if (swipeDirections.y > 0) {
                     return 'bottom'
                 }
                 break;
-            case "top":
-                // Bottom
+            case "bottom":
                 if (swipeDirections.y < 0) {
                     return 'back'
                 }
-                // Top
                 if (swipeDirections.y > 0) {
                     return 'front'
                 }
+                break;
+            case "right":
+                if (swipeDirections.x < 0) {
+                    return 'back'
+                }
+                if (swipeDirections.x > 0) {
+                    return 'front'
+                }
+                break;
+            case "left":
+                if (swipeDirections.x < 0) {
+                    return 'right'
+                }
+                if (swipeDirections.x > 0) {
+                    return 'left'
+                }
+                break
         }
 
         return currentDirection()
@@ -56,13 +97,11 @@
         }
     }
 
-    function adjustCubeRotation(ev: MouseEvent) {
+    function stopCubeRotation(ev: MouseEvent) {
         if (!drag) {
             return;
         }
-    }
 
-    function stopCubeRotation(ev: MouseEvent) {
         drag = false;
 
         const actualPosition: Vector2D = {
@@ -85,91 +124,104 @@
             swipeDirectionY = Math.sign(deltaPosition.y)
         }
 
-        side = calcNextDirection(() => side, {
-            x: swipeDirectionX,
-            y: swipeDirectionY
-        })
+        if (swipeDirectionY > 0) {
+            relativeRotationY += -90;
+            rotationQuat = quat.rotateX(quat.create(), rotationQuat, glMatrix.toRadian(90))
+        }
+        if (swipeDirectionY < 0) {
+            relativeRotationY += 90;
+            rotationQuat = quat.rotateX(quat.create(), rotationQuat, glMatrix.toRadian(-90))
+        }
+
+        if (swipeDirectionX > 0) {
+            relativeRotationX += 90;
+            rotationQuat = quat.rotateY(quat.create(), rotationQuat, glMatrix.toRadian(-90))
+        }
+        if (swipeDirectionX < 0) {
+            relativeRotationX += -90;
+            rotationQuat = quat.rotateY(quat.create(), rotationQuat, glMatrix.toRadian(90))
+        }
+
+
+        rotationMatrix = mat4.fromQuat(rotationMatrix, rotationQuat);
+        // console.log(quat.str(rotationQuat), rotationQuat * 180 / Math.PI, glMatrix.toRadian(90))
     }
 
-    function getCubeRotationSideStyle(side: () => CubeSides): string {
+    function getCubeRotationSideStyle(side: () => CubeSides, rotX: () => number, rotY: () => number, rotationVector: () => mat4): string {
         const perspective = 10000;
-        const result = `perspective(${perspective}px)`
 
-        switch (side()) {
-            case "front":
-                return ''
-            case "back":
-                return `${result} rotateX(180deg) rotateZ(180deg) scaleX(-1)`
-            case 'left':
-                return `${result} rotateY(-90deg) scaleX(-1)`;
-            case 'right':
-                return `${result} rotateY(-90deg)`;
-            case 'top':
-                return `${result} rotateX(90deg)`
-            case 'bottom':
-                return `${result} rotateX(-90deg)`
-            default:
-                return ''
-        }
+        // console.log(rotX(), Math.abs(rotX()) % 180 ? 'B' : 'A')
+        //
+        // const rotA = rotX() % 180
+
+        const x = 0
+        const y = 0
+        const z = 0
+        const angle = 0
+
+        // return `perspective(${perspective}px) rotate3d(${x}, ${y}, ${z}, ${angle}deg)`
+        return `perspective(${perspective}px) matrix3d(${rotationMatrix.join(",")})`//rotateX(${rotationQuat[0]}rad) rotateY(${rotationQuat[1]}rad) rotateZ(${rotationQuat[2]}rad)`//matrix3d(1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1)`
+
+        // switch (side()) {
+        //     case "front":
+        //         return ''
+        //     case "back":
+        //         return `${result} rotateX(180deg) rotateZ(180deg) scaleX(-1)`
+        //     case 'left':
+        //         return `${result} rotateY(-90deg) scaleX(-1)`;
+        //     case 'right':
+        //         return `${result} rotateY(-90deg)`;
+        //     case 'top':
+        //         return `${result} rotateX(-90deg)`
+        //     case 'bottom':
+        //         return `${result} rotateX(90deg)`
+        //     default:
+        //         return ''
+        // }
     }
 </script>
 
 <div>
-    <div class="container" style:--transform={transformPosition}>
-        <button class="face front"
-                onmousedown={startCubeRotation}
-                onmousemove={adjustCubeRotation}
-                onmouseup={stopCubeRotation}
-                onmouseleave={stopCubeRotation}
-                tabindex="-1">
+    <button aria-label="interactor"
+            class="interactor no-button"
+            onmousedown={startCubeRotation}
+            onmouseup={stopCubeRotation}
+            onmouseleave={stopCubeRotation}></button>
+    <div class="container"
+         style:--transform={transformPosition}>
+        <div class="face front">
             <img src={blackSide} alt=""/>
-        </button>
-        <button class="face right"
-                onmousedown={startCubeRotation}
-                onmousemove={adjustCubeRotation}
-                onmouseup={stopCubeRotation}
-                onmouseleave={stopCubeRotation}
-                tabindex="-2">
+        </div>
+        <div class="face right">
             <img src={redSide} alt=""/>
-        </button>
-        <button class="face left"
-                onmousedown={startCubeRotation}
-                onmousemove={adjustCubeRotation}
-                onmouseup={stopCubeRotation}
-                onmouseleave={stopCubeRotation}
-                tabindex="-3">
+        </div>
+        <div class="face left"
+        >
             <img src={blueSide} alt=""/>
-        </button>
-        <button class="face back"
-                onmousedown={startCubeRotation}
-                onmousemove={adjustCubeRotation}
-                onmouseup={stopCubeRotation}
-                onmouseleave={stopCubeRotation}
-                tabindex="-4">
+        </div>
+        <div class="face back">
             <img src={whiteSide} alt=""/>
-        </button>
-        <button class="face top"
-                onmousedown={startCubeRotation}
-                onmousemove={adjustCubeRotation}
-                onmouseup={stopCubeRotation}
-                onmouseleave={stopCubeRotation}
-                tabindex="-5">
+        </div>
+        <div class="face top">
             <img src={yellowSide} alt=""/>
-        </button>
-        <button class="face bottom"
-                onmousedown={startCubeRotation}
-                onmousemove={adjustCubeRotation}
-                onmouseup={stopCubeRotation}
-                onmouseleave={stopCubeRotation}
-                tabindex="-6">
+        </div>
+        <div class="face bottom">
             <img src={greenSide} alt=""/>
-        </button>
+        </div>
     </div>
 </div>
 
 <style>
     :root {
         --size: 25vw;
+    }
+
+    .interactor {
+        position: absolute;
+        z-index: 1000;
+        cursor: crosshair;
+        width: var(--size);
+        height: var(--size);
     }
 
     .container {
@@ -184,10 +236,19 @@
         transition: transform 1s cubic-bezier(0.22, 1, 0.36, 1);
     }
 
-    .face {
+    .no-button {
         background: unset;
         border: unset;
         padding: unset;
+    }
+
+    .face {
+        -webkit-touch-callout: none; /* iOS Safari */
+        -webkit-user-select: none; /* Safari */
+        -moz-user-select: none; /* Old versions of Firefox */
+        -ms-user-select: none; /* Internet Explorer/Edge */
+        user-select: none;
+        pointer-events: none;
         position: absolute;
         top: 0;
         left: 0;
