@@ -17,8 +17,8 @@
     let drag = $state(false);
     let startPosition: Vector2D = $state({x: 0, y: 0});
     let side: CubeSides = $state('front');
-    let pitch = $state(0);
     let yaw = $state(0);
+    let roll = $state(0);
     let rotationMatrix = $state(mat4.create())
     let rotationQuat = $state(quat.create());
     let transformPosition: string = $state(applyRotation(() => rotationMatrix))
@@ -63,46 +63,26 @@
             swipeDirectionY = Math.sign(deltaPosition.y)
         }
 
-        // rotationQuat = quat.mul(quat.create(), rotationQuat, quat.fromEuler(quat.create(), 0, glMatrix.toRadian(90), 0))
+        const incrementX = quat.create();
+        const incrementY = quat.create();
+        console.log(swipeDirectionX, swipeDirectionY);
 
-        if (swipeDirectionX > 0) {
-            pitch = glMatrix.toRadian(90);
-            // rotationQuat = quat.rotateY(quat.create(), rotationQuat, glMatrix.toRadian(90))
-            // rotationQuat = quat.mul(quat.create(), rotationQuat, quat.fromEuler(quat.create(), 0, 90, 0))
-        }
-        if (swipeDirectionX < 0) {
-            pitch = glMatrix.toRadian(-90);
-
-            // rotationQuat = quat.rotateY(quat.create(), rotationQuat, glMatrix.toRadian(-90))
-            // rotationQuat = quat.mul(quat.create(), rotationQuat, quat.fromEuler(quat.create(), 0, -90, 0))
+        if (swipeDirectionX !== 0) {
+            const angle = swipeDirectionX * 90; // +90 for right, -90 for left
+            quat.setAxisAngle(incrementX, [0, 1, 0], glMatrix.toRadian(angle));
         }
 
-        if (swipeDirectionY > 0) {
-            yaw = glMatrix.toRadian(-90);
-
-            // rotationQuat = quat.rotateZ(quat.create(), rotationQuat, glMatrix.toRadian(90))
-            // rotationQuat = quat.mul(quat.create(), rotationQuat, quat.fromEuler(quat.create(), 90, 0, 0))
+        // Apply Y-axis rotation (swipe up/down)
+        if (swipeDirectionY !== 0) {
+            const angle = -swipeDirectionY * 90; // +90 for up, -90 for down
+            quat.setAxisAngle(incrementY, [1, 0, 0], glMatrix.toRadian(angle));
         }
 
-        if (swipeDirectionY < 0) {
-            yaw = glMatrix.toRadian(90);
-            // rotationQuat = quat.rotateZ(quat.create(), rotationQuat, glMatrix.toRadian(-90))
-            // rotationQuat = quat.mul(quat.create(), rotationQuat, quat.fromEuler(quat.create(), -90, 0, 0))
-        }
+        // Combine rotations: rotation = rotation * newRotation
+        quat.multiply(rotationQuat, incrementX, rotationQuat); // Apply X-rotation
+        quat.multiply(rotationQuat, incrementY, rotationQuat); // Apply Y-rotation
 
-        let pitchQuat = quat.create()
-        if (Math.abs(pitch) > 0) {
-            pitchQuat = quat.setAxisAngle(pitchQuat, vec3.fromValues(0, 1, 0), pitch)
-            rotationQuat = quat.mul(rotationQuat, rotationQuat, pitchQuat)
-        }
-        let yawQuat = quat.create()
-        if (Math.abs(yaw) > 0) {
-            yawQuat = quat.setAxisAngle(quat.create(), vec3.fromValues(1, 0, 0), yaw)
-            rotationQuat = quat.mul(rotationQuat, rotationQuat, yawQuat)
-        }
         rotationMatrix = mat4.fromQuat(mat4.create(), rotationQuat);
-        pitch = 0
-        yaw = 0;
     }
 
     function applyRotation(rotMatrix: () => mat4): string {
