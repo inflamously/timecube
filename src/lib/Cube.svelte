@@ -7,8 +7,6 @@
     import greenSide from '../assets/green.png'
     import {glMatrix, mat4, quat, vec3} from 'gl-matrix'
 
-    type CubeSides = 'front' | 'back' | 'left' | 'right' | 'top' | 'bottom'
-
     type Vector2D = {
         x: number;
         y: number;
@@ -16,9 +14,7 @@
 
     let drag = $state(false);
     let startPosition: Vector2D = $state({x: 0, y: 0});
-    let side: CubeSides = $state('front');
-    let yaw = $state(0);
-    let roll = $state(0);
+    let cubeForward = $state<vec3>([0, 0, 1]);
     let rotationMatrix = $state(mat4.create())
     let rotationQuat = $state(quat.create());
     let transformPosition: string = $state(applyRotation(() => rotationMatrix))
@@ -28,15 +24,45 @@
     })
 
     function startCubeRotationProcess(ev: MouseEvent) {
-        console.log("drag start");
         drag = true;
         startPosition = {
             x: ev.clientX, y: ev.clientY
         }
     }
 
+    function calculateSwipeDirectionsFromMouseDelta(deltaPosition: { x: number, y: number }, deltaOffset: number) {
+        let swipeDirectionX = 0;
+        if (Math.abs(deltaPosition.x) > deltaOffset) {
+            swipeDirectionX = Math.sign(deltaPosition.x)
+        }
+        let swipeDirectionY = 0;
+        if (Math.abs(deltaPosition.y) > deltaOffset) {
+            swipeDirectionY = Math.sign(deltaPosition.y)
+        }
+
+        return [swipeDirectionX, swipeDirectionY]
+    }
+
+    function applySwipeRotationToQuaternion(swipeDirectionX: number, swipeDirectionY: number) {
+        const incrementX = quat.create();
+        const incrementY = quat.create();
+
+        if (swipeDirectionX !== 0) {
+            const angle = swipeDirectionX * 90; // +90 for right, -90 for left
+            quat.setAxisAngle(incrementX, [0, 1, 0], glMatrix.toRadian(angle));
+        }
+
+        if (swipeDirectionY !== 0) {
+            const angle = -swipeDirectionY * 90; // +90 for up, -90 for down
+            quat.setAxisAngle(incrementY, [1, 0, 0], glMatrix.toRadian(angle));
+        }
+
+        quat.multiply(rotationQuat, incrementX, rotationQuat);
+        quat.multiply(rotationQuat, incrementY, rotationQuat);
+        rotationMatrix = mat4.fromQuat(mat4.create(), rotationQuat);
+    }
+
     function applyCubeRotationProcess(ev: MouseEvent) {
-        console.log("drag finished");
         if (!drag) {
             return;
         }
@@ -54,41 +80,35 @@
             y: actualPosition.y - startPosition.y
         }
 
-        let swipeDirectionX = 0;
-        if (Math.abs(deltaPosition.x) > deltaOffset) {
-            swipeDirectionX = Math.sign(deltaPosition.x)
-        }
-        let swipeDirectionY = 0;
-        if (Math.abs(deltaPosition.y) > deltaOffset) {
-            swipeDirectionY = Math.sign(deltaPosition.y)
+        if (Math.abs(deltaPosition.x) < deltaOffset && Math.abs(deltaPosition.y) < deltaOffset) {
+            return;
         }
 
-        const incrementX = quat.create();
-        const incrementY = quat.create();
-        console.log(swipeDirectionX, swipeDirectionY);
+        const [swipeDirectionX, swipeDirectionY] = calculateSwipeDirectionsFromMouseDelta(deltaPosition, deltaOffset)
+        applySwipeRotationToQuaternion(swipeDirectionX, swipeDirectionY);
 
-        if (swipeDirectionX !== 0) {
-            const angle = swipeDirectionX * 90; // +90 for right, -90 for left
-            quat.setAxisAngle(incrementX, [0, 1, 0], glMatrix.toRadian(angle));
-        }
+        const normalizeRotationQuat = quat.create()
+        quat.normalize(normalizeRotationQuat, rotationQuat);
 
-        // Apply Y-axis rotation (swipe up/down)
-        if (swipeDirectionY !== 0) {
-            const angle = -swipeDirectionY * 90; // +90 for up, -90 for down
-            quat.setAxisAngle(incrementY, [1, 0, 0], glMatrix.toRadian(angle));
-        }
-
-        // Combine rotations: rotation = rotation * newRotation
-        quat.multiply(rotationQuat, incrementX, rotationQuat); // Apply X-rotation
-        quat.multiply(rotationQuat, incrementY, rotationQuat); // Apply Y-rotation
-
-        rotationMatrix = mat4.fromQuat(mat4.create(), rotationQuat);
+        const signOffsetValue = 0.001
+        const signOffset = (a: number, offset: number) => Math.sign(a > offset ? a : a < -offset ? a : 0)
+        let forwardVec = vec3.create()
+        let rightVec = vec3.create()
+        let upVec = vec3.create()
+        vec3.transformQuat(forwardVec, [0, 0, 1], normalizeRotationQuat)
+        vec3.transformQuat(rightVec, [1, 0, 0], normalizeRotationQuat)
+        vec3.transformQuat(upVec, [0, -1, 0], normalizeRotationQuat)
+        const signedForwardVec = [signOffset(forwardVec[0], signOffsetValue), signOffset(forwardVec[1], signOffsetValue), signOffset(forwardVec[2], signOffsetValue)]
+        const signedRightVec = [signOffset(rightVec[0], signOffsetValue), signOffset(rightVec[1], signOffsetValue), signOffset(rightVec[2], signOffsetValue)]
+        const signedUpVec = [signOffset(upVec[0], signOffsetValue), signOffset(upVec[1], signOffsetValue), signOffset(upVec[2], signOffsetValue)]
+        console.log("forward", signedForwardVec)
+        console.log("right", signedRightVec)
+        console.log("up", signedUpVec);
     }
 
     function applyRotation(rotMatrix: () => mat4): string {
         const perspective = 10000;
-        console.log(rotMatrix());
-        return `perspective(${perspective}px) matrix3d(${rotMatrix().join(",")})`//rotateX(${rotationQuat[0]}rad) rotateY(${rotationQuat[1]}rad) rotateZ(${rotationQuat[2]}rad)`//matrix3d(1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1)`
+        return `perspective(${perspective}px) matrix3d(${rotMatrix().join(",")})`
     }
 </script>
 
@@ -100,6 +120,12 @@
             onmouseleave={applyCubeRotationProcess}></button>
     <div class="container"
          style:--transform={transformPosition}>
+        <div class="debug-forward"></div>
+        <div class="debug-forward-side"></div>
+        <div class="debug-right"></div>
+        <div class="debug-right-side"></div>
+        <div class="debug-up"></div>
+        <div class="debug-up-side"></div>
         <div class="face front">
             <img src={blackSide} alt=""/>
         </div>
@@ -124,7 +150,47 @@
 
 <style>
     :root {
-        --size: 25vw;
+        --size: 20vw;
+    }
+
+    .debug-forward, .debug-forward-side, .debug-up, .debug-up-side, .debug-right, .debug-right-side {
+        position: absolute;
+        width: 48px;
+        height: 48px;
+        clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+
+        user-select: none;
+        z-index: 1001;
+    }
+
+    .debug-forward {
+        transform: translateZ(var(--size));
+        background: red;
+    }
+
+    .debug-forward-side {
+        transform: translateZ(var(--size)) rotateY(90deg);
+        background: red;
+    }
+
+    .debug-up {
+        transform: translateY(calc(-1 * var(--size)));
+        background: green;
+    }
+
+    .debug-up-side {
+        transform: translateY(calc(-1 * var(--size))) rotateY(-90deg);
+        background: green;
+    }
+
+    .debug-right {
+        transform: translateX(var(--size));
+        background: blue;
+    }
+
+    .debug-right-side {
+        transform: translateX(var(--size)) rotateY(-90deg);
+        background: blue;
     }
 
     .interactor {
@@ -172,7 +238,7 @@
     }
 
     .face.back {
-        transform: translateZ(calc(-1 * var(--size) / 2));
+        transform: translateZ(calc(-1 * var(--size) / 2)) scale(-1, 1);
     }
 
     .face.right {
@@ -184,7 +250,7 @@
     }
 
     .face.top {
-        transform: rotateX(-90deg) rotateZ(180deg) scaleX(-1) translateZ(calc(-1 * var(--size) / 2));
+        transform: rotateX(-90deg) scaleX(-1) translateZ(calc(-1 * var(--size) / 2));
     }
 
     .face.bottom {
@@ -196,7 +262,7 @@
         -ms-user-drag: none;
         -moz-user-drag: none;
         user-drag: none;
-        width: 25vw;
-        height: 25vw;
+        width: var(--size);
+        height: var(--size);
     }
 </style>
