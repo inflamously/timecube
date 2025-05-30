@@ -20,9 +20,11 @@
     let transformPosition: string = $state(applyRotation(() => rotationMatrix))
     let timer = $state('00:00')
     let upAxisSide = $state<string | null>('top')
+    let forwardAxisSide = $state<string | null>('front')
     let debug = $state(true);
 
     $inspect(upAxisSide)
+    $inspect(forwardAxisSide)
 
     $effect(() => {
         transformPosition = applyRotation(() => rotationMatrix);
@@ -118,10 +120,14 @@
             }
             return null
         }
+        let forwardVec = vec3.create()
         let upVec = vec3.create()
         vec3.transformQuat(upVec, [0, -1, 0], normalizeRotationQuat)
+        vec3.transformQuat(forwardVec, [0, 0, 1], normalizeRotationQuat)
         const signedUpVec = [signOffset(upVec[0], signOffsetValue), signOffset(upVec[1], signOffsetValue), signOffset(upVec[2], signOffsetValue)]
+        const signedForwardVec = [signOffset(forwardVec[0], signOffsetValue), signOffset(forwardVec[1], signOffsetValue), signOffset(forwardVec[2], signOffsetValue)]
         upAxisSide = calculateSide([signedUpVec[0], signedUpVec[1], signedUpVec[2]])
+        forwardAxisSide = calculateSide([signedForwardVec[0], signedForwardVec[1], signedForwardVec[2]])
     }
 
     function applyRotation(rotMatrix: () => mat4): string {
@@ -146,10 +152,14 @@
             <div class="debug-up"></div>
             <div class="debug-up-side"></div>
         {/if}
-        <div class="text text-front-bottom" class:text-visible={upAxisSide === 'top'}>{timer}</div>
-        <div class="text text-front-top" class:text-visible={upAxisSide === 'bottom'}>{timer}</div>
-        <div class="text text-front-right" class:text-visible={upAxisSide === 'right'}>{timer}</div>
-        <div class="text text-front-left" class:text-visible={upAxisSide === 'left'}>{timer}</div>
+        <div class="text text-front-bottom"
+             class:text-visible={upAxisSide === 'top' && forwardAxisSide === 'front'}>{timer}</div>
+        <div class="text text-front-top"
+             class:text-visible={upAxisSide === 'bottom'  && forwardAxisSide === 'front'}>{timer}</div>
+        <div class="text text-front-right"
+             class:text-visible={upAxisSide === 'right'  && forwardAxisSide === 'front'}>{timer}</div>
+        <div class="text text-front-left"
+             class:text-visible={upAxisSide === 'left'  && forwardAxisSide === 'front'}>{timer}</div>
         <div class="face front">
             <img src={blackSide} alt=""/>
         </div>
