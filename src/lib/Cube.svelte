@@ -1,4 +1,5 @@
 <script lang="ts">
+    import {fade} from 'svelte/transition'
     import blackSide from '../assets/black.png'
     import redSide from '../assets/red.png'
     import blueSide from '../assets/blue.png'
@@ -152,14 +153,18 @@
             <div class="debug-up"></div>
             <div class="debug-up-side"></div>
         {/if}
-        <div class="text text-front-bottom"
-             class:text-visible={upAxisSide === 'top' && forwardAxisSide === 'front'}>{timer}</div>
-        <div class="text text-front-top"
-             class:text-visible={upAxisSide === 'bottom'  && forwardAxisSide === 'front'}>{timer}</div>
-        <div class="text text-front-right"
-             class:text-visible={upAxisSide === 'right'  && forwardAxisSide === 'front'}>{timer}</div>
-        <div class="text text-front-left"
-             class:text-visible={upAxisSide === 'left'  && forwardAxisSide === 'front'}>{timer}</div>
+        {#if upAxisSide === 'top' && forwardAxisSide === 'front'}
+            <div class="text text-front-bottom" in:fade={{ duration: 250 }} out:fade={{ duration: 250 }}>{timer}</div>
+        {/if}
+        {#if upAxisSide === 'bottom' && forwardAxisSide === 'front'}
+            <div class="text text-front-top" in:fade={{ duration: 250 }} out:fade={{ duration: 250 }}>{timer}</div>
+        {/if}
+        {#if upAxisSide === 'right' && forwardAxisSide === 'front'}
+            <div class="text text-front-right" in:fade={{ duration: 250 }} out:fade={{ duration: 250 }}>{timer}</div>
+        {/if}
+        {#if upAxisSide === 'left' && forwardAxisSide === 'front'}
+            <div class="text text-front-left" in:fade={{ duration: 250 }} out:fade={{ duration: 250 }}>{timer}</div>
+        {/if}
         <div class="face front">
             <img src={blackSide} alt=""/>
         </div>
@@ -184,7 +189,7 @@
 <style>
     :root {
         --size: calc(10rem + 15vw);
-        --font-size: calc(1rem + 1.5vw);
+        --font-size: calc(4rem + 2vw);
         --text-to-line: calc(var(--size) / 2.25)
     }
 
@@ -255,27 +260,22 @@
         font-size: var(--font-size);
         z-index: 1001;
         user-select: none;
-        visibility: hidden;
-    }
-
-    .text-visible {
-        visibility: visible;
     }
 
     .text-front-top {
-        transform: translateZ(calc(var(--size) / 2)) translateY(calc(-1 * var(--text-to-line))) rotateZ(180deg);
+        transform: translateZ(calc(var(--size) / 2)) rotateZ(180deg);
     }
 
     .text-front-bottom {
-        transform: translateZ(calc(var(--size) / 2)) translateY(var(--text-to-line));
+        transform: translateZ(calc(var(--size) / 2));
     }
 
     .text-front-left {
-        transform: translateZ(calc(var(--size) / 2)) translateX(calc(-1 * var(--text-to-line))) rotateZ(90deg);
+        transform: translateZ(calc(var(--size) / 2)) rotateZ(90deg);
     }
 
     .text-front-right {
-        transform: translateZ(calc(var(--size) / 2)) translateX(var(--text-to-line)) rotateZ(-90deg);
+        transform: translateZ(calc(var(--size) / 2)) rotateZ(-90deg);
     }
 
     .no-button {
