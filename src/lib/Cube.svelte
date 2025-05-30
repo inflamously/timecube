@@ -18,6 +18,11 @@
     let rotationMatrix = $state(mat4.create())
     let rotationQuat = $state(quat.create());
     let transformPosition: string = $state(applyRotation(() => rotationMatrix))
+    let timer = $state('00:00')
+    let upAxisSide = $state<string | null>('top')
+    let debug = $state(true);
+
+    $inspect(upAxisSide)
 
     $effect(() => {
         transformPosition = applyRotation(() => rotationMatrix);
@@ -87,23 +92,36 @@
         const [swipeDirectionX, swipeDirectionY] = calculateSwipeDirectionsFromMouseDelta(deltaPosition, deltaOffset)
         applySwipeRotationToQuaternion(swipeDirectionX, swipeDirectionY);
 
+        // TODO: Refactor to function
         const normalizeRotationQuat = quat.create()
         quat.normalize(normalizeRotationQuat, rotationQuat);
-
         const signOffsetValue = 0.001
         const signOffset = (a: number, offset: number) => Math.sign(a > offset ? a : a < -offset ? a : 0)
-        let forwardVec = vec3.create()
-        let rightVec = vec3.create()
+        const calculateSide = ([x, y, z]: [number, number, number]): string | null => {
+            if (x === 1) {
+                return "right"
+            }
+            if (x === -1) {
+                return "left"
+            }
+            if (y === -1) {
+                return "top"
+            }
+            if (y === 1) {
+                return "bottom"
+            }
+            if (z === -1) {
+                return "back"
+            }
+            if (z === 1) {
+                return "front"
+            }
+            return null
+        }
         let upVec = vec3.create()
-        vec3.transformQuat(forwardVec, [0, 0, 1], normalizeRotationQuat)
-        vec3.transformQuat(rightVec, [1, 0, 0], normalizeRotationQuat)
         vec3.transformQuat(upVec, [0, -1, 0], normalizeRotationQuat)
-        const signedForwardVec = [signOffset(forwardVec[0], signOffsetValue), signOffset(forwardVec[1], signOffsetValue), signOffset(forwardVec[2], signOffsetValue)]
-        const signedRightVec = [signOffset(rightVec[0], signOffsetValue), signOffset(rightVec[1], signOffsetValue), signOffset(rightVec[2], signOffsetValue)]
         const signedUpVec = [signOffset(upVec[0], signOffsetValue), signOffset(upVec[1], signOffsetValue), signOffset(upVec[2], signOffsetValue)]
-        console.log("forward", signedForwardVec)
-        console.log("right", signedRightVec)
-        console.log("up", signedUpVec);
+        upAxisSide = calculateSide([signedUpVec[0], signedUpVec[1], signedUpVec[2]])
     }
 
     function applyRotation(rotMatrix: () => mat4): string {
@@ -120,20 +138,25 @@
             onmouseleave={applyCubeRotationProcess}></button>
     <div class="container"
          style:--transform={transformPosition}>
-        <div class="debug-forward"></div>
-        <div class="debug-forward-side"></div>
-        <div class="debug-right"></div>
-        <div class="debug-right-side"></div>
-        <div class="debug-up"></div>
-        <div class="debug-up-side"></div>
+        {#if debug}
+            <div class="debug-forward"></div>
+            <div class="debug-forward-side"></div>
+            <div class="debug-right"></div>
+            <div class="debug-right-side"></div>
+            <div class="debug-up"></div>
+            <div class="debug-up-side"></div>
+        {/if}
+        <div class="text text-front-bottom" class:text-visible={upAxisSide === 'top'}>{timer}</div>
+        <div class="text text-front-top" class:text-visible={upAxisSide === 'bottom'}>{timer}</div>
+        <div class="text text-front-right" class:text-visible={upAxisSide === 'right'}>{timer}</div>
+        <div class="text text-front-left" class:text-visible={upAxisSide === 'left'}>{timer}</div>
         <div class="face front">
             <img src={blackSide} alt=""/>
         </div>
         <div class="face right">
             <img src={redSide} alt=""/>
         </div>
-        <div class="face left"
-        >
+        <div class="face left">
             <img src={blueSide} alt=""/>
         </div>
         <div class="face back">
@@ -150,7 +173,9 @@
 
 <style>
     :root {
-        --size: 20vw;
+        --size: calc(10rem + 15vw);
+        --font-size: calc(1rem + 1.5vw);
+        --text-to-line: calc(var(--size) / 2.25)
     }
 
     .debug-forward, .debug-forward-side, .debug-up, .debug-up-side, .debug-right, .debug-right-side {
@@ -213,6 +238,36 @@
         transition: transform 1s cubic-bezier(0.22, 1, 0.36, 1);
     }
 
+    .text {
+        position: absolute;
+        color: white;
+        font-weight: 1000;
+        font-size: var(--font-size);
+        z-index: 1001;
+        user-select: none;
+        visibility: hidden;
+    }
+
+    .text-visible {
+        visibility: visible;
+    }
+
+    .text-front-top {
+        transform: translateZ(calc(var(--size) / 2)) translateY(calc(-1 * var(--text-to-line))) rotateZ(180deg);
+    }
+
+    .text-front-bottom {
+        transform: translateZ(calc(var(--size) / 2)) translateY(var(--text-to-line));
+    }
+
+    .text-front-left {
+        transform: translateZ(calc(var(--size) / 2)) translateX(calc(-1 * var(--text-to-line))) rotateZ(90deg);
+    }
+
+    .text-front-right {
+        transform: translateZ(calc(var(--size) / 2)) translateX(var(--text-to-line)) rotateZ(-90deg);
+    }
+
     .no-button {
         background: unset;
         border: unset;
@@ -242,7 +297,7 @@
     }
 
     .face.right {
-        transform: rotateY(90deg) translateZ(calc(-1 * var(--size) / 2));
+        transform: rotateY(90deg) scaleX(-1) translateZ(calc(-1 * var(--size) / 2));
     }
 
     .face.left {
@@ -250,7 +305,7 @@
     }
 
     .face.top {
-        transform: rotateX(-90deg) scaleX(-1) translateZ(calc(-1 * var(--size) / 2));
+        transform: rotateX(-90deg) scaleX(-1) rotateZ(180deg) translateZ(calc(-1 * var(--size) / 2));
     }
 
     .face.bottom {
