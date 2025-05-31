@@ -7,8 +7,9 @@
     import greenSide from '../assets/green.png'
     import {glMatrix, mat4, quat, vec3} from 'gl-matrix'
     import DebugAxis from "./DebugAxis.svelte";
-    import CubeFaceRender from "./CubeFaceTextRender.svelte";
-    import type {AxisTypes} from "./Axis.types";
+    import {type AxisType} from "./axis.utils";
+    import {calculateLocalForwardAndUpVector} from "./vector.utils";
+    import CubeFaceContentRender from "./CubeFaceContentRender.svelte";
 
     type Vector2D = {
         x: number;
@@ -20,8 +21,8 @@
     let rotationMatrix = $state(mat4.create())
     let rotationQuat = $state(quat.create());
     let transformPosition: string = $derived(applyRotation(() => rotationMatrix))
-    let localUpAxisSide = $state<AxisTypes | null>('top')
-    let localForwardAxisSide = $state<AxisTypes | null>('front')
+    let localUpAxisSide = $state<AxisType | null>('top')
+    let localForwardAxisSide = $state<AxisType | null>('front')
 
     let timer = $state('12:00')
     let debug = $state(true);
@@ -89,53 +90,9 @@
 
         const [swipeDirectionX, swipeDirectionY] = calculateSwipeDirectionsFromMouseDelta(deltaPosition, deltaOffset)
         applySwipeRotationToQuaternion(swipeDirectionX, swipeDirectionY);
-        calculateLocalForwardAndUpVector();
-    }
-
-    function calculateLocalForwardAndUpVector() {
-        const normalizedRotationQuat = quat.create()
-        quat.normalize(normalizedRotationQuat, rotationQuat);
-        const signedUpVec = calculateLocalAxisVectorFromWorldVector([0, -1, 0], normalizedRotationQuat)
-        const signedForwardVec = calculateLocalAxisVectorFromWorldVector([0, 0, 1], normalizedRotationQuat)
-        localUpAxisSide = calculateSideFromWorldVector([signedUpVec[0], signedUpVec[1], signedUpVec[2]])
-        localForwardAxisSide = calculateSideFromWorldVector([signedForwardVec[0], signedForwardVec[1], signedForwardVec[2]])
-    }
-
-    function calculateSideFromWorldVector([x, y, z]: [number, number, number]): AxisTypes | null {
-        if (x === 1) {
-            return "right"
-        }
-        if (x === -1) {
-            return "left"
-        }
-        if (y === -1) {
-            return "top"
-        }
-        if (y === 1) {
-            return "bottom"
-        }
-        if (z === -1) {
-            return "back"
-        }
-        if (z === 1) {
-            return "front"
-        }
-        return null
-    }
-
-    function calculateSignedVector(a: number, offset: number) {
-        return Math.sign(a > offset ? a : a < -offset ? a : 0)
-    }
-
-    function calculateLocalAxisVectorFromWorldVector(axis: vec3, normalizedRotationQuat: quat) {
-        const signOffsetValue = 0.001
-        let rotationAppliedAxisVector = vec3.create()
-        vec3.transformQuat(rotationAppliedAxisVector, axis, normalizedRotationQuat)
-        return [
-            calculateSignedVector(rotationAppliedAxisVector[0], signOffsetValue),
-            calculateSignedVector(rotationAppliedAxisVector[1], signOffsetValue),
-            calculateSignedVector(rotationAppliedAxisVector[2], signOffsetValue)
-        ]
+        const [upVec, forwardVec] = calculateLocalForwardAndUpVector(rotationQuat);
+        localUpAxisSide = upVec
+        localForwardAxisSide = forwardVec
     }
 
     function applyRotation(rotMatrix: () => mat4): string {
@@ -156,32 +113,26 @@
             <DebugAxis/>
         {/if}
         {#if localForwardAxisSide && localUpAxisSide}
-            <CubeFaceRender localAxisForwardSide={localForwardAxisSide} localAxisUpSide={localUpAxisSide}>
-                {#snippet fronttop()}
+            <CubeFaceContentRender localAxisForwardSide={localForwardAxisSide} localAxisUpSide={localUpAxisSide}>
+                {#snippet front()}
                     <div class="text text-white">{timer}</div>
                 {/snippet}
-                {#snippet frontbottom()}
-                    <div class="text text-white">{timer}</div>
+                {#snippet back()}
+                    <div>XXX</div>
                 {/snippet}
-                {#snippet frontleft()}
-                    <div class="text text-white">{timer}</div>
+                {#snippet top()}
+                    <div>XXX</div>
                 {/snippet}
-                {#snippet frontright()}
-                    <div class="text text-white">{timer}</div>
+                {#snippet bottom()}
+                    <div>XXX</div>
                 {/snippet}
-                {#snippet backtop()}
-                    <div class="text text-black">{timer}</div>
+                {#snippet right()}
+                    <div>XXX</div>
                 {/snippet}
-                {#snippet backbottom()}
-                    <div class="text text-black">{timer}</div>
+                {#snippet left()}
+                    <div>XXX</div>
                 {/snippet}
-                {#snippet backleft()}
-                    <div class="text text-black">{timer}</div>
-                {/snippet}
-                {#snippet backright()}
-                    <div class="text text-black">{timer}</div>
-                {/snippet}
-            </CubeFaceRender>
+            </CubeFaceContentRender>
         {/if}
         <div class="face front">
             <img src={blackSide} alt=""/>

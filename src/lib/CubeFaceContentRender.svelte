@@ -1,14 +1,12 @@
 <script lang="ts">
-    import type {AxisTypes, UpAxisTypes} from "./Axis.types";
+    import type {AxisType, UpAxisTypes} from "./axis.utils";
     import type {Snippet} from "svelte";
-    import {fade, crossfade} from 'svelte/transition'
+    import {fade} from 'svelte/transition'
 
-    type CombinedAxis = `${AxisTypes}${UpAxisTypes}`
-    type SlotRenderMap = Record<CombinedAxis, () => any>
+    type SlotRenderMap = Record<AxisType, () => any>
 
-    function slotRender(frontAxis: AxisTypes, upAxis: UpAxisTypes, slots: Partial<SlotRenderMap>): Snippet | null {
-        const key = `${frontAxis}${upAxis}`
-        console.log(key);
+    function slotRender(frontAxis: AxisType, slots: Partial<SlotRenderMap>): Snippet | null {
+        const key = `${frontAxis}`
         return slots?.[key as keyof typeof slots] ?? null
     }
 
@@ -27,37 +25,41 @@
         }
     }
 
-    function calculateTextTransform(frontAxis: AxisTypes, upAxis: UpAxisTypes) {
+    function calculateTextTransform(frontAxis: AxisType, upAxis: UpAxisTypes): string {
         switch (`${frontAxis}`) {
             case "front":
                 return `transform: translateZ(calc(var(--size) / 2)) ${calculateTextRotation(upAxis)}`;
             case "back":
                 return `transform: scale(-1, 1) translateZ(calc(-1 * var(--size) / 2)) ${calculateTextRotation(upAxis)}`
+            case "bottom":
+                return `transform: ;`
+            case "top":
+                return `transform: ;`
+            case "left":
+                return `transform: ;`
+            case "right":
+                return `transform: ;`
             default:
                 return ""
         }
     }
 
     const props: {
-        localAxisForwardSide: AxisTypes,
-        localAxisUpSide: AxisTypes,
+        localAxisForwardSide: AxisType,
+        localAxisUpSide: AxisType,
     } & Partial<SlotRenderMap> = $props()
 
     let transformStyle = $derived(calculateTextTransform(props.localAxisForwardSide, props.localAxisUpSide as UpAxisTypes));
-    let slotToRender = $derived<Snippet | null>(slotRender(props.localAxisForwardSide, props.localAxisUpSide as UpAxisTypes, props));
+    let slotToRender = $derived<Snippet | null>(slotRender(props.localAxisForwardSide, props));
     let animTransitionConfig = $state({duration: 250})
 </script>
 
 <div class="face-text" style={transformStyle}>
-    <span>{props.localAxisForwardSide + props.localAxisUpSide}</span>
-    {#key props.localAxisForwardSide + props.localAxisUpSide}
-        {#if slotToRender}
-            <div in:fade={animTransitionConfig}
-                 out:fade={animTransitionConfig}>
-                {@render slotToRender?.()}
-            </div>
-        {/if}
-    {/key}
+    {#if slotToRender}
+        <div in:fade={animTransitionConfig}>
+            {@render slotToRender()}
+        </div>
+    {/if}
 </div>
 
 <style>
