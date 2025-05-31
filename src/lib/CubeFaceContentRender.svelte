@@ -1,5 +1,5 @@
 <script lang="ts">
-    import type {AxisType} from "./axis.utils";
+    import {type AxisType, calculateRotationTowardsWorldUp} from "./axis.utils";
     import type {Snippet} from "svelte";
     import {fade} from 'svelte/transition'
 
@@ -10,40 +10,27 @@
         return slots?.[key as keyof typeof slots] ?? null
     }
 
-    function calculateTextRotation(upAxis: AxisType, invert = false) {
-        switch (upAxis) {
-            case "top":
-                return invert ? "rotateZ(180deg)" : ""
-            case "bottom":
-                return invert ? "" : "rotateZ(180deg)"
-            case "left":
-                return invert ? "rotateZ(-90deg)" : "rotateZ(90deg)"
-            case "right":
-                return invert ? "rotateZ(90deg)" : "rotateZ(-90deg)"
-            default:
-                return ""
-        }
-    }
-
     function calculateTextTransform(forwardAxis: AxisType, upAxis: AxisType, rightAxis: AxisType): string {
         if (forwardAxis === "front") {
-            return `transform: translateZ(calc(var(--size) / 2)) ${calculateTextRotation(upAxis)}`;
+            return `transform: translateZ(calc(var(--size) / 2)) ${calculateRotationTowardsWorldUp(upAxis)}`;
         }
         if (forwardAxis === "back") {
-            return `transform: scale(-1, 1) translateZ(calc(-1 * var(--size) / 2)) ${calculateTextRotation(upAxis)}`
+            return `transform: scale(-1, 1) translateZ(calc(-1 * var(--size) / 2)) ${calculateRotationTowardsWorldUp(upAxis)}`
         }
         if (upAxis === "front") {
-            return `transform: rotateX(90deg) translateZ(calc(var(--size) / 2)) ${calculateTextRotation(forwardAxis, true)};`
+            return `transform: rotateX(90deg) translateZ(calc(var(--size) / 2)) ${calculateRotationTowardsWorldUp(forwardAxis, true)};`
         }
         if (upAxis === "back") {
-            return `transform: rotateX(-90deg) translateZ(calc((var(--size) + .5rem) / 2)) ${calculateTextRotation(forwardAxis)};`
+            return `transform: rotateX(-90deg) translateZ(calc((var(--size) + .5rem) / 2)) ${calculateRotationTowardsWorldUp(forwardAxis)};`
         }
         if (rightAxis === 'front') {
-            return `transform: rotateY(90deg) translateZ(calc((var(--size) + .5rem) / 2)) ${calculateTextRotation(upAxis)};`
+            return `transform: rotateY(90deg) translateZ(calc((var(--size) + .5rem) / 2)) ${calculateRotationTowardsWorldUp(upAxis)};`
         }
         if (rightAxis === 'back') {
-            return `transform: rotateY(-90deg) translateZ(calc((var(--size) + .5rem) / 2)) ${calculateTextRotation(upAxis)};`
+            return `transform: rotateY(-90deg) translateZ(calc((var(--size) + .5rem) / 2)) ${calculateRotationTowardsWorldUp(upAxis)};`
         }
+
+        return ""
     }
 
     const props: {

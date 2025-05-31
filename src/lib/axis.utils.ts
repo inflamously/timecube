@@ -28,3 +28,18 @@ export function calculateSideFromWorldVector([x, y, z]: [number, number, number]
     }
     return null
 }
+
+export function calculateRotationTowardsWorldUp(upAxis: AxisType | null, invert = false) {
+    switch (upAxis) {
+        case "top":
+            return invert ? "rotateZ(180deg)" : ""
+        case "bottom":
+            return invert ? "" : "rotateZ(180deg)"
+        case "left":
+            return invert ? "rotateZ(-90deg)" : "rotateZ(90deg)"
+        case "right":
+            return invert ? "rotateZ(90deg)" : "rotateZ(-90deg)"
+        default:
+            return ""
+    }
+}

@@ -142,10 +142,10 @@
         <div class="face front">
             <img src={blackSide} alt=""/>
         </div>
-        <div class="face right">
+        <div class="face left">
             <img src={redSide} alt=""/>
         </div>
-        <div class="face left">
+        <div class="face right">
             <img src={blueSide} alt=""/>
         </div>
         <div class="face back">
@@ -234,11 +234,11 @@
         transform: translateZ(calc(-1 * var(--size) / 2)) scale(-1, 1);
     }
 
-    .face.right {
+    .face.left {
         transform: rotateY(90deg) scaleX(-1) translateZ(calc(-1 * var(--size) / 2));
     }
 
-    .face.left {
+    .face.right {
         transform: rotateY(90deg) translateZ(calc(var(--size) / 2));
     }
 
