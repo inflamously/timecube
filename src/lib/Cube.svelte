@@ -8,6 +8,8 @@
     import greenSide from '../assets/green.png'
     import {glMatrix, mat4, quat, vec3} from 'gl-matrix'
     import DebugAxis from "./DebugAxis.svelte";
+    import CubeFaceRender from "./CubeFaceTextRender.svelte";
+    import type {AxisTypes} from "./Axis.types";
 
     type Vector2D = {
         x: number;
@@ -19,8 +21,8 @@
     let rotationMatrix = $state(mat4.create())
     let rotationQuat = $state(quat.create());
     let transformPosition: string = $state(applyRotation(() => rotationMatrix))
-    let localUpAxisSide = $state<string | null>('top')
-    let localForwardAxisSide = $state<string | null>('front')
+    let localUpAxisSide = $state<AxisTypes | null>('top')
+    let localForwardAxisSide = $state<AxisTypes | null>('front')
 
     let timer = $state('00:00')
     let debug = $state(true);
@@ -107,7 +109,7 @@
         localForwardAxisSide = calculateSideFromWorldVector([signedForwardVec[0], signedForwardVec[1], signedForwardVec[2]])
     }
 
-    function calculateSideFromWorldVector([x, y, z]: [number, number, number]): string | null {
+    function calculateSideFromWorldVector([x, y, z]: [number, number, number]): AxisTypes | null {
         if (x === 1) {
             return "right"
         }
@@ -161,17 +163,25 @@
         {#if debug}
             <DebugAxis/>
         {/if}
-        {#if localUpAxisSide === 'top' && localForwardAxisSide === 'front'}
-            <div class="text text-front-bottom" in:fade={{ duration: 250 }} out:fade={{ duration: 250 }}>{timer}</div>
-        {/if}
-        {#if localUpAxisSide === 'bottom' && localForwardAxisSide === 'front'}
-            <div class="text text-front-top" in:fade={{ duration: 250 }} out:fade={{ duration: 250 }}>{timer}</div>
-        {/if}
-        {#if localUpAxisSide === 'right' && localForwardAxisSide === 'front'}
-            <div class="text text-front-right" in:fade={{ duration: 250 }} out:fade={{ duration: 250 }}>{timer}</div>
-        {/if}
-        {#if localUpAxisSide === 'left' && localForwardAxisSide === 'front'}
-            <div class="text text-front-left" in:fade={{ duration: 250 }} out:fade={{ duration: 250 }}>{timer}</div>
+        {#if localForwardAxisSide && localUpAxisSide}
+            <CubeFaceRender localAxisForwardSide={localForwardAxisSide} localAxisUpSide={localUpAxisSide}>
+                {#snippet fronttop()}
+                    <div class="text text-front-bottom" in:fade={{ duration: 250 }}
+                         out:fade={{ duration: 250 }}>{timer}</div>
+                {/snippet}
+                {#snippet frontbottom()}
+                    <div class="text text-front-top" in:fade={{ duration: 250 }}
+                         out:fade={{ duration: 250 }}>{timer}</div>
+                {/snippet}
+                {#snippet frontleft()}
+                    <div class="text text-front-left" in:fade={{ duration: 250 }}
+                         out:fade={{ duration: 250 }}>{timer}</div>
+                {/snippet}
+                {#snippet frontright()}
+                    <div class="text text-front-right" in:fade={{ duration: 250 }}
+                         out:fade={{ duration: 250 }}>{timer}</div>
+                {/snippet}
+            </CubeFaceRender>
         {/if}
         <div class="face front">
             <img src={blackSide} alt=""/>
@@ -227,28 +237,9 @@
     }
 
     .text {
-        position: absolute;
         color: white;
         font-weight: 1000;
         font-size: var(--font-size);
-        z-index: 999;
-        user-select: none;
-    }
-
-    .text-front-top {
-        transform: translateZ(calc(var(--size) / 2)) rotateZ(180deg);
-    }
-
-    .text-front-bottom {
-        transform: translateZ(calc(var(--size) / 2));
-    }
-
-    .text-front-left {
-        transform: translateZ(calc(var(--size) / 2)) rotateZ(90deg);
-    }
-
-    .text-front-right {
-        transform: translateZ(calc(var(--size) / 2)) rotateZ(-90deg);
     }
 
     .no-button {
