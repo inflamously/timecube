@@ -1,5 +1,4 @@
 <script lang="ts">
-    import {fade} from 'svelte/transition'
     import blackSide from '../assets/black.png'
     import redSide from '../assets/red.png'
     import blueSide from '../assets/blue.png'
@@ -20,19 +19,12 @@
     let startPosition: Vector2D = $state({x: 0, y: 0});
     let rotationMatrix = $state(mat4.create())
     let rotationQuat = $state(quat.create());
-    let transformPosition: string = $state(applyRotation(() => rotationMatrix))
+    let transformPosition: string = $derived(applyRotation(() => rotationMatrix))
     let localUpAxisSide = $state<AxisTypes | null>('top')
     let localForwardAxisSide = $state<AxisTypes | null>('front')
 
-    let timer = $state('00:00')
+    let timer = $state('12:00')
     let debug = $state(true);
-
-    $inspect(localUpAxisSide);
-    $inspect(localForwardAxisSide);
-
-    $effect(() => {
-        transformPosition = applyRotation(() => rotationMatrix);
-    })
 
     function startCubeRotationProcess(ev: MouseEvent) {
         drag = true;
@@ -166,20 +158,28 @@
         {#if localForwardAxisSide && localUpAxisSide}
             <CubeFaceRender localAxisForwardSide={localForwardAxisSide} localAxisUpSide={localUpAxisSide}>
                 {#snippet fronttop()}
-                    <div class="text text-front-bottom" in:fade={{ duration: 250 }}
-                         out:fade={{ duration: 250 }}>{timer}</div>
+                    <div class="text text-white">{timer}</div>
                 {/snippet}
                 {#snippet frontbottom()}
-                    <div class="text text-front-top" in:fade={{ duration: 250 }}
-                         out:fade={{ duration: 250 }}>{timer}</div>
+                    <div class="text text-white">{timer}</div>
                 {/snippet}
                 {#snippet frontleft()}
-                    <div class="text text-front-left" in:fade={{ duration: 250 }}
-                         out:fade={{ duration: 250 }}>{timer}</div>
+                    <div class="text text-white">{timer}</div>
                 {/snippet}
                 {#snippet frontright()}
-                    <div class="text text-front-right" in:fade={{ duration: 250 }}
-                         out:fade={{ duration: 250 }}>{timer}</div>
+                    <div class="text text-white">{timer}</div>
+                {/snippet}
+                {#snippet backtop()}
+                    <div class="text text-black">{timer}</div>
+                {/snippet}
+                {#snippet backbottom()}
+                    <div class="text text-black">{timer}</div>
+                {/snippet}
+                {#snippet backleft()}
+                    <div class="text text-black">{timer}</div>
+                {/snippet}
+                {#snippet backright()}
+                    <div class="text text-black">{timer}</div>
                 {/snippet}
             </CubeFaceRender>
         {/if}
@@ -240,6 +240,14 @@
         color: white;
         font-weight: 1000;
         font-size: var(--font-size);
+    }
+
+    .text-white {
+        color: white;
+    }
+
+    .text-black {
+        color: black;
     }
 
     .no-button {

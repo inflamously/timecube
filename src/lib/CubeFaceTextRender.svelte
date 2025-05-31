@@ -1,6 +1,7 @@
 <script lang="ts">
     import type {AxisTypes, UpAxisTypes} from "./Axis.types";
     import type {Snippet} from "svelte";
+    import {fade, crossfade} from 'svelte/transition'
 
     type CombinedAxis = `${AxisTypes}${UpAxisTypes}`
     type SlotRenderMap = Record<CombinedAxis, () => any>
@@ -11,21 +12,52 @@
         return slots?.[key as keyof typeof slots] ?? null
     }
 
+    function calculateTextRotation(upAxis: UpAxisTypes) {
+        switch (upAxis) {
+            case "top":
+                return ""
+            case "bottom":
+                return "rotateZ(180deg)"
+            case "left":
+                return "rotateZ(90deg)"
+            case "right":
+                return "rotateZ(-90deg)"
+            default:
+                return ""
+        }
+    }
+
+    function calculateTextTransform(frontAxis: AxisTypes, upAxis: UpAxisTypes) {
+        switch (`${frontAxis}`) {
+            case "front":
+                return `transform: translateZ(calc(var(--size) / 2)) ${calculateTextRotation(upAxis)}`;
+            case "back":
+                return `transform: scale(-1, 1) translateZ(calc(-1 * var(--size) / 2)) ${calculateTextRotation(upAxis)}`
+            default:
+                return ""
+        }
+    }
+
     const props: {
         localAxisForwardSide: AxisTypes,
         localAxisUpSide: AxisTypes,
     } & Partial<SlotRenderMap> = $props()
 
-    const upAxisTypes = props.localAxisUpSide as UpAxisTypes;
-    let slotToRender = $state<Snippet | null>(null);
-
-    $effect(() => {
-        slotToRender = slotRender(props.localAxisForwardSide, upAxisTypes, props);
-    })
+    let transformStyle = $derived(calculateTextTransform(props.localAxisForwardSide, props.localAxisUpSide as UpAxisTypes));
+    let slotToRender = $derived<Snippet | null>(slotRender(props.localAxisForwardSide, props.localAxisUpSide as UpAxisTypes, props));
+    let animTransitionConfig = $state({duration: 250})
 </script>
 
-<div class="face-text face-text-{props.localAxisForwardSide}-{props.localAxisUpSide}">
-    {@render slotToRender?.()}
+<div class="face-text" style={transformStyle}>
+    <span>{props.localAxisForwardSide + props.localAxisUpSide}</span>
+    {#key props.localAxisForwardSide + props.localAxisUpSide}
+        {#if slotToRender}
+            <div in:fade={animTransitionConfig}
+                 out:fade={animTransitionConfig}>
+                {@render slotToRender?.()}
+            </div>
+        {/if}
+    {/key}
 </div>
 
 <style>
@@ -33,21 +65,5 @@
         position: absolute;
         z-index: 999;
         user-select: none;
-    }
-
-    .face-text-front-top {
-        transform: translateZ(calc(var(--size) / 2));
-    }
-
-    .face-text-front-bottom {
-        transform: translateZ(calc(var(--size) / 2)) rotateZ(180deg);
-    }
-
-    .face-text-front-left {
-        transform: translateZ(calc(var(--size) / 2)) rotateZ(90deg);
-    }
-
-    .face-text-front-right {
-        transform: translateZ(calc(var(--size) / 2)) rotateZ(-90deg);
     }
 </style>
