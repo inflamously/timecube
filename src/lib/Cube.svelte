@@ -23,6 +23,7 @@
     let transformPosition: string = $derived(applyRotation(() => rotationMatrix))
     let localUpAxisSide = $state<AxisType | null>('top')
     let localForwardAxisSide = $state<AxisType | null>('front')
+    let localRightAxisSide = $state<AxisType | null>('right')
 
     let timer = $state('12:00')
     let debug = $state(true);
@@ -90,9 +91,10 @@
 
         const [swipeDirectionX, swipeDirectionY] = calculateSwipeDirectionsFromMouseDelta(deltaPosition, deltaOffset)
         applySwipeRotationToQuaternion(swipeDirectionX, swipeDirectionY);
-        const [upVec, forwardVec] = calculateLocalForwardAndUpVector(rotationQuat);
+        const [upVec, forwardVec, rightVec] = calculateLocalForwardAndUpVector(rotationQuat);
         localUpAxisSide = upVec
         localForwardAxisSide = forwardVec
+        localRightAxisSide = rightVec
     }
 
     function applyRotation(rotMatrix: () => mat4): string {
@@ -112,25 +114,28 @@
         {#if debug}
             <DebugAxis/>
         {/if}
-        {#if localForwardAxisSide && localUpAxisSide}
-            <CubeFaceContentRender localAxisForwardSide={localForwardAxisSide} localAxisUpSide={localUpAxisSide}>
+        {#if localForwardAxisSide && localUpAxisSide && localRightAxisSide}
+            <CubeFaceContentRender
+                    localAxisForwardSide={localForwardAxisSide}
+                    localAxisUpSide={localUpAxisSide}
+                    localAxisRightSide={localRightAxisSide}>
                 {#snippet front()}
                     <div class="text text-white">{timer}</div>
                 {/snippet}
                 {#snippet back()}
-                    <div>XXX</div>
+                    <div class="text">XYZ</div>
                 {/snippet}
                 {#snippet top()}
-                    <div>XXX</div>
+                    <div class="text">XYZ</div>
                 {/snippet}
                 {#snippet bottom()}
-                    <div>XXX</div>
+                    <div class="text">XYZ</div>
                 {/snippet}
                 {#snippet right()}
-                    <div>XXX</div>
+                    <div class="text">XYZ</div>
                 {/snippet}
                 {#snippet left()}
-                    <div>XXX</div>
+                    <div class="text">XYZ</div>
                 {/snippet}
             </CubeFaceContentRender>
         {/if}
