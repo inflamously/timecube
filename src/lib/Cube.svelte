@@ -7,6 +7,7 @@
     import yellowSide from '../assets/yellow.png'
     import greenSide from '../assets/green.png'
     import {glMatrix, mat4, quat, vec3} from 'gl-matrix'
+    import DebugAxis from "./DebugAxis.svelte";
 
     type Vector2D = {
         x: number;
@@ -15,17 +16,17 @@
 
     let drag = $state(false);
     let startPosition: Vector2D = $state({x: 0, y: 0});
-    let cubeForward = $state<vec3>([0, 0, 1]);
     let rotationMatrix = $state(mat4.create())
     let rotationQuat = $state(quat.create());
     let transformPosition: string = $state(applyRotation(() => rotationMatrix))
+    let localUpAxisSide = $state<string | null>('top')
+    let localForwardAxisSide = $state<string | null>('front')
+
     let timer = $state('00:00')
-    let upAxisSide = $state<string | null>('top')
-    let forwardAxisSide = $state<string | null>('front')
     let debug = $state(true);
 
-    $inspect(upAxisSide)
-    $inspect(forwardAxisSide)
+    $inspect(localUpAxisSide);
+    $inspect(localForwardAxisSide);
 
     $effect(() => {
         transformPosition = applyRotation(() => rotationMatrix);
@@ -94,41 +95,53 @@
 
         const [swipeDirectionX, swipeDirectionY] = calculateSwipeDirectionsFromMouseDelta(deltaPosition, deltaOffset)
         applySwipeRotationToQuaternion(swipeDirectionX, swipeDirectionY);
+        calculateLocalForwardAndUpVector();
+    }
 
-        // TODO: Refactor to function
-        const normalizeRotationQuat = quat.create()
-        quat.normalize(normalizeRotationQuat, rotationQuat);
-        const signOffsetValue = 0.001
-        const signOffset = (a: number, offset: number) => Math.sign(a > offset ? a : a < -offset ? a : 0)
-        const calculateSide = ([x, y, z]: [number, number, number]): string | null => {
-            if (x === 1) {
-                return "right"
-            }
-            if (x === -1) {
-                return "left"
-            }
-            if (y === -1) {
-                return "top"
-            }
-            if (y === 1) {
-                return "bottom"
-            }
-            if (z === -1) {
-                return "back"
-            }
-            if (z === 1) {
-                return "front"
-            }
-            return null
+    function calculateLocalForwardAndUpVector() {
+        const normalizedRotationQuat = quat.create()
+        quat.normalize(normalizedRotationQuat, rotationQuat);
+        const signedUpVec = calculateLocalAxisVectorFromWorldVector([0, -1, 0], normalizedRotationQuat)
+        const signedForwardVec = calculateLocalAxisVectorFromWorldVector([0, 0, 1], normalizedRotationQuat)
+        localUpAxisSide = calculateSideFromWorldVector([signedUpVec[0], signedUpVec[1], signedUpVec[2]])
+        localForwardAxisSide = calculateSideFromWorldVector([signedForwardVec[0], signedForwardVec[1], signedForwardVec[2]])
+    }
+
+    function calculateSideFromWorldVector([x, y, z]: [number, number, number]): string | null {
+        if (x === 1) {
+            return "right"
         }
-        let forwardVec = vec3.create()
-        let upVec = vec3.create()
-        vec3.transformQuat(upVec, [0, -1, 0], normalizeRotationQuat)
-        vec3.transformQuat(forwardVec, [0, 0, 1], normalizeRotationQuat)
-        const signedUpVec = [signOffset(upVec[0], signOffsetValue), signOffset(upVec[1], signOffsetValue), signOffset(upVec[2], signOffsetValue)]
-        const signedForwardVec = [signOffset(forwardVec[0], signOffsetValue), signOffset(forwardVec[1], signOffsetValue), signOffset(forwardVec[2], signOffsetValue)]
-        upAxisSide = calculateSide([signedUpVec[0], signedUpVec[1], signedUpVec[2]])
-        forwardAxisSide = calculateSide([signedForwardVec[0], signedForwardVec[1], signedForwardVec[2]])
+        if (x === -1) {
+            return "left"
+        }
+        if (y === -1) {
+            return "top"
+        }
+        if (y === 1) {
+            return "bottom"
+        }
+        if (z === -1) {
+            return "back"
+        }
+        if (z === 1) {
+            return "front"
+        }
+        return null
+    }
+
+    function calculateSignedVector(a: number, offset: number) {
+        return Math.sign(a > offset ? a : a < -offset ? a : 0)
+    }
+
+    function calculateLocalAxisVectorFromWorldVector(axis: vec3, normalizedRotationQuat: quat) {
+        const signOffsetValue = 0.001
+        let rotationAppliedAxisVector = vec3.create()
+        vec3.transformQuat(rotationAppliedAxisVector, axis, normalizedRotationQuat)
+        return [
+            calculateSignedVector(rotationAppliedAxisVector[0], signOffsetValue),
+            calculateSignedVector(rotationAppliedAxisVector[1], signOffsetValue),
+            calculateSignedVector(rotationAppliedAxisVector[2], signOffsetValue)
+        ]
     }
 
     function applyRotation(rotMatrix: () => mat4): string {
@@ -137,7 +150,7 @@
     }
 </script>
 
-<div>
+<div class="interaction-container">
     <button aria-label="interactor"
             class="interactor no-button"
             onmousedown={startCubeRotationProcess}
@@ -146,23 +159,18 @@
     <div class="container"
          style:--transform={transformPosition}>
         {#if debug}
-            <div class="debug-forward"></div>
-            <div class="debug-forward-side"></div>
-            <div class="debug-right"></div>
-            <div class="debug-right-side"></div>
-            <div class="debug-up"></div>
-            <div class="debug-up-side"></div>
+            <DebugAxis/>
         {/if}
-        {#if upAxisSide === 'top' && forwardAxisSide === 'front'}
+        {#if localUpAxisSide === 'top' && localForwardAxisSide === 'front'}
             <div class="text text-front-bottom" in:fade={{ duration: 250 }} out:fade={{ duration: 250 }}>{timer}</div>
         {/if}
-        {#if upAxisSide === 'bottom' && forwardAxisSide === 'front'}
+        {#if localUpAxisSide === 'bottom' && localForwardAxisSide === 'front'}
             <div class="text text-front-top" in:fade={{ duration: 250 }} out:fade={{ duration: 250 }}>{timer}</div>
         {/if}
-        {#if upAxisSide === 'right' && forwardAxisSide === 'front'}
+        {#if localUpAxisSide === 'right' && localForwardAxisSide === 'front'}
             <div class="text text-front-right" in:fade={{ duration: 250 }} out:fade={{ duration: 250 }}>{timer}</div>
         {/if}
-        {#if upAxisSide === 'left' && forwardAxisSide === 'front'}
+        {#if localUpAxisSide === 'left' && localForwardAxisSide === 'front'}
             <div class="text text-front-left" in:fade={{ duration: 250 }} out:fade={{ duration: 250 }}>{timer}</div>
         {/if}
         <div class="face front">
@@ -193,52 +201,18 @@
         --text-to-line: calc(var(--size) / 2.25)
     }
 
-    .debug-forward, .debug-forward-side, .debug-up, .debug-up-side, .debug-right, .debug-right-side {
-        position: absolute;
-        width: 48px;
-        height: 48px;
-        clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
-
-        user-select: none;
-        z-index: 1001;
-    }
-
-    .debug-forward {
-        transform: translateZ(var(--size));
-        background: red;
-    }
-
-    .debug-forward-side {
-        transform: translateZ(var(--size)) rotateY(90deg);
-        background: red;
-    }
-
-    .debug-up {
-        transform: translateY(calc(-1 * var(--size)));
-        background: green;
-    }
-
-    .debug-up-side {
-        transform: translateY(calc(-1 * var(--size))) rotateY(-90deg);
-        background: green;
-    }
-
-    .debug-right {
-        transform: translateX(var(--size));
-        background: blue;
-    }
-
-    .debug-right-side {
-        transform: translateX(var(--size)) rotateY(-90deg);
-        background: blue;
-    }
-
     .interactor {
         position: absolute;
         z-index: 1000;
         cursor: crosshair;
         width: var(--size);
         height: var(--size);
+    }
+
+    .interaction-container {
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
 
     .container {
@@ -248,7 +222,6 @@
         transform-style: preserve-3d;
         width: var(--size);
         height: var(--size);
-        transform-origin: 50% 50%;
         transform: var(--transform);
         transition: transform 1s cubic-bezier(0.22, 1, 0.36, 1);
     }
@@ -258,7 +231,7 @@
         color: white;
         font-weight: 1000;
         font-size: var(--font-size);
-        z-index: 1001;
+        z-index: 999;
         user-select: none;
     }
 
