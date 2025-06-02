@@ -10,6 +10,7 @@
     import {type AxisType} from "./axis.utils";
     import {calculateLocalForwardAndUpVector} from "./vector.utils";
     import CubeFaceContentRender from "./CubeFaceContentRender.svelte";
+    import {getClientPositionFromTouchEvent} from "./input.utils";
 
     type Vector2D = {
         x: number;
@@ -18,6 +19,7 @@
 
     let drag = $state(false);
     let startPosition: Vector2D = $state({x: 0, y: 0});
+    let endPosition: Vector2D = $state({x: 0, y: 0})
     let rotationMatrix = $state(mat4.create())
     let rotationQuat = $state(quat.create());
     let transformPosition: string = $derived(applyRotation(() => rotationMatrix))
@@ -28,14 +30,46 @@
     let timer = $state('12:00')
     let debug = $state(true);
 
-    function startCubeRotationProcess(ev: MouseEvent) {
+    function startCubeRotationProcessMouse(ev: MouseEvent) {
         drag = true;
         startPosition = {
             x: ev.clientX, y: ev.clientY
         }
     }
 
-    function calculateSwipeDirectionsFromMouseDelta(deltaPosition: { x: number, y: number }, deltaOffset: number) {
+    function applyCubeRotationProcessMouse(ev: MouseEvent) {
+        endPosition = {
+            x: ev.clientX,
+            y: ev.clientY
+        }
+        applyCubeRotationProcess(endPosition, startPosition)
+    }
+
+    function startCubeRotationProcessTouch(ev: TouchEvent) {
+        if (ev.touches.length > 0) {
+            drag = true;
+            const [x, y] = getClientPositionFromTouchEvent(ev)
+            startPosition = {
+                x, y
+            }
+        }
+    }
+
+    function calculateCubeRotationProcessTouch(ev: TouchEvent) {
+        if (drag) {
+            const [x, y] = getClientPositionFromTouchEvent(ev)
+            endPosition = {
+                x,
+                y
+            }
+        }
+    }
+
+    function applyCubeRotationProcessTouch() {
+        applyCubeRotationProcess(endPosition, startPosition)
+    }
+
+    function calculateSwipeDirectionsFromDelta(deltaPosition: { x: number, y: number }, deltaOffset: number) {
         let swipeDirectionX = 0;
         if (Math.abs(deltaPosition.x) > deltaOffset) {
             swipeDirectionX = Math.sign(deltaPosition.x)
@@ -67,17 +101,12 @@
         rotationMatrix = mat4.fromQuat(mat4.create(), rotationQuat);
     }
 
-    function applyCubeRotationProcess(ev: MouseEvent) {
+    function applyCubeRotationProcess(actualPosition: Vector2D, startPosition: Vector2D) {
         if (!drag) {
             return;
         }
 
         drag = false;
-
-        const actualPosition: Vector2D = {
-            x: ev.clientX,
-            y: ev.clientY
-        }
 
         const deltaOffset = 50;
         const deltaPosition: Vector2D = {
@@ -89,7 +118,7 @@
             return;
         }
 
-        const [swipeDirectionX, swipeDirectionY] = calculateSwipeDirectionsFromMouseDelta(deltaPosition, deltaOffset)
+        const [swipeDirectionX, swipeDirectionY] = calculateSwipeDirectionsFromDelta(deltaPosition, deltaOffset)
         applySwipeRotationToQuaternion(swipeDirectionX, swipeDirectionY);
         const [upVec, forwardVec, rightVec] = calculateLocalForwardAndUpVector(rotationQuat);
         localUpAxisSide = upVec
@@ -106,9 +135,14 @@
 <div class="interaction-container">
     <button aria-label="interactor"
             class="interactor no-button"
-            onmousedown={startCubeRotationProcess}
-            onmouseup={applyCubeRotationProcess}
-            onmouseleave={applyCubeRotationProcess}></button>
+            onmousedown={startCubeRotationProcessMouse}
+            onmouseup={applyCubeRotationProcessMouse}
+            onmouseleave={applyCubeRotationProcessMouse}
+            ontouchstart={startCubeRotationProcessTouch}
+            ontouchmove={calculateCubeRotationProcessTouch}
+            ontouchend={applyCubeRotationProcessTouch}
+            ontouchcancel={applyCubeRotationProcessTouch}
+    ></button>
     <div class="container"
          style:--transform={transformPosition}>
         {#if debug}
@@ -179,6 +213,7 @@
         display: flex;
         align-items: center;
         justify-content: center;
+        zoom: 75%;
     }
 
     .container {
