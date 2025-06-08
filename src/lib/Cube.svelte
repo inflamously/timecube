@@ -11,7 +11,7 @@
     import {calculateLocalForwardAndUpVector} from "./vector.utils";
     import CubeFaceContentRender from "./CubeFaceContentRender.svelte";
     import {getClientPositionFromTouchEvent} from "./input.utils";
-    import { selectTime } from '../time.state.svelte';
+    import { selectTime } from './time.state.svelte.js';
 
     type Vector2D = {
         x: number;
