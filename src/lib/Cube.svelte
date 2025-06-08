@@ -11,6 +11,7 @@
     import {calculateLocalForwardAndUpVector} from "./vector.utils";
     import CubeFaceContentRender from "./CubeFaceContentRender.svelte";
     import {getClientPositionFromTouchEvent} from "./input.utils";
+    import { selectTime } from '../time.state.svelte';
 
     type Vector2D = {
         x: number;
@@ -27,7 +28,7 @@
     let localForwardAxisSide = $state<AxisType | null>('front')
     let localRightAxisSide = $state<AxisType | null>('right')
 
-    let timer = $state('12:00')
+    let timer = $state(selectTime())
     let debug = $state(true);
 
     function startCubeRotationProcessMouse(ev: MouseEvent) {
